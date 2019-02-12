@@ -60,7 +60,7 @@ func main() {
 		intervalSeconds int
 	)
 
-	flag.StringVar(&dbURL, "db_url", "", "URL for sqlite3 database")
+	flag.StringVar(&dbURL, "db_url", "", "URL for PostGIS database")
 	flag.IntVar(&intervalSeconds, "interval", 60, "polling interval in seconds")
 
 	flag.Parse()

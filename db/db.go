@@ -5,7 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"github.com/jnschaeffer/gosepta/transitview"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/lib/pq"
 	"time"
 )
 
@@ -25,8 +25,10 @@ destination,
 offset_min,
 offset_sec,
 heading,
-late_min
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
+late_min,
+geom
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,
+          $10, $11, $12, $13, $14, ST_SetSRID(ST_MakePoint($8, $7), 4326));`
 
 	return db.Prepare(query)
 }
@@ -39,7 +41,7 @@ type Client struct {
 
 // NewClient creates a new Client.
 func NewClient(dbURL string) (*Client, error) {
-	conn, errOpen := sql.Open("sqlite3", dbURL)
+	conn, errOpen := sql.Open("postgres", dbURL)
 	if errOpen != nil {
 		return nil, errOpen
 	}
@@ -59,26 +61,32 @@ func (c *Client) Close() error {
 // Initialize initializes the database for the client. If the necessary tables already exist, this
 // is a no-op.
 func (c *Client) Initialize(ctx context.Context) error {
-	query := `
+	createQuery := `
 CREATE TABLE IF NOT EXISTS vehicles (
-    route TEXT,
-    read_time TEXT,
-    label TEXT,
-    vehicle_id TEXT,
-    block_id TEXT,
-    trip TEXT,
-    latitude REAL,
-    longitude REAL,
-    direction TEXT,
-    destination TEXT,
-    offset_min INT,
-    offset_sec INT,
-    heading INT,
-    late_min INT,
-    UNIQUE (route, trip, vehicle_id, block_id) ON CONFLICT IGNORE
+    route text,
+    read_time timestamp,
+    label text,
+    vehicle_id text,
+    block_id text,
+    trip text,
+    latitude double precision,
+    longitude double precision,
+    direction text,
+    destination text,
+    offset_min int,
+    offset_sec int,
+    heading int,
+    late_min int
 );`
 
-	_, errExec := c.conn.Exec(query)
+	_, errExec := c.conn.Exec(createQuery)
+	if errExec != nil {
+		return errExec
+	}
+
+	geomQuery := `SELECT AddGeometryColumn('vehicles', 'geom', 4326, 'POINT', 2);`
+
+	_, errExec = c.conn.Exec(geomQuery)
 	if errExec != nil {
 		return errExec
 	}
