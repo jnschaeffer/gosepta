@@ -63,6 +63,7 @@ func (c *Client) Close() error {
 func (c *Client) Initialize(ctx context.Context) error {
 	createQuery := `
 CREATE TABLE IF NOT EXISTS vehicles (
+    id serial primary key,
     route text,
     read_time timestamp,
     label text,
@@ -76,17 +77,11 @@ CREATE TABLE IF NOT EXISTS vehicles (
     offset_min int,
     offset_sec int,
     heading int,
-    late_min int
+    late_min int,
+    geom geometry(Point,4326)
 );`
 
 	_, errExec := c.conn.Exec(createQuery)
-	if errExec != nil {
-		return errExec
-	}
-
-	geomQuery := `SELECT AddGeometryColumn('vehicles', 'geom', 4326, 'POINT', 2);`
-
-	_, errExec = c.conn.Exec(geomQuery)
 	if errExec != nil {
 		return errExec
 	}
